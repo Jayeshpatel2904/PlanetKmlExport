@@ -473,11 +473,18 @@ public class PlanetKMLCreator extends JFrame {
 
                 // --- SECTORS FOLDER ---
                 writer.write("<Folder>\n<name>SECTORS</name>\n");
-                for (Map<String, String> row : finalSectorsData.tableData) {
-                    String bandName = row.getOrDefault("Band Name", "Unknown");
+                Map<String, List<Map<String, String>>> sectorsByBand = finalSectorsData.tableData.stream()
+                    .collect(Collectors.groupingBy(row -> row.getOrDefault("Band Name", "Unknown")));
+
+                for(Map.Entry<String, List<Map<String, String>>> bandEntry : sectorsByBand.entrySet()) {
+                    String bandName = bandEntry.getKey();
                     BandSettings settings = bandSettings.get(bandName);
                     if (settings != null && settings.include) {
-                        writer.write(createSectorPlacemark(row, bandName, settings.size));
+                        writer.write("<Folder>\n<name>" + bandName + "</name>\n");
+                        for (Map<String, String> row : bandEntry.getValue()) {
+                            writer.write(createSectorPlacemark(row, bandName, settings.size));
+                        }
+                        writer.write("</Folder>\n");
                     }
                 }
                 writer.write("</Folder>\n");
@@ -763,7 +770,8 @@ public class PlanetKMLCreator extends JFrame {
             String labelText = row.getOrDefault(header, "");
 
             if (!labelText.isEmpty()) {
-                double[] labelCoords = getDestinationPoint(lat, lon, azimuth, range / 2.0);
+                double distance = header.equals("Electrical Tilt") ? range : range / 2.0;
+                double[] labelCoords = getDestinationPoint(lat, lon, azimuth, distance);
                 sb.append("<Placemark>\n");
                 sb.append("  <name>").append(labelText).append("</name>\n");
                 sb.append("  <styleUrl>#label-style</styleUrl>\n");
