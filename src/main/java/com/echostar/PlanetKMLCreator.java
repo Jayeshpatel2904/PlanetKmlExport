@@ -65,7 +65,7 @@ public class PlanetKMLCreator extends JFrame {
     }
 
     public PlanetKMLCreator() {
-        super("Excel Sheet Viewer (Memory-Efficient)");
+        super("PLANET KML GENERATOR");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setSize(1280, 800);
@@ -463,7 +463,8 @@ public class PlanetKMLCreator extends JFrame {
                     }
                 }
 
-                // --- SITES FOLDER ---
+
+// --- SITES FOLDER ---
                 writer.write("<Folder>\n<name>SITES</name>\n");
                 for (Map<String, String> siteRow : finalSiteData.tableData) {
                     writer.write(createSitePlacemark(siteRow));
@@ -489,7 +490,7 @@ public class PlanetKMLCreator extends JFrame {
                 }
                 writer.write("</Folder>\n");
                 
-                // --- DISPLAY FOLDER ---
+ //--- DISPLAY FOLDER ---
                 writer.write("<Folder>\n<name>Display</name>\n");
                 List<String> displayHeaders = Arrays.asList("Physical Cell ID", "Electrical Tilt");
                 for (String header : displayHeaders) {
@@ -532,6 +533,7 @@ public class PlanetKMLCreator extends JFrame {
             }
         }
     }
+
 
     private Map<String, BandSettings> showBandCustomizationDialog(Set<String> bands) {
         JPanel panel = new JPanel(new GridBagLayout());
@@ -633,9 +635,12 @@ public class PlanetKMLCreator extends JFrame {
                "        <hotSpot x=\"0.5\" y=\"0.5\" xunits=\"fraction\" yunits=\"fraction\"/>\n" +
                "    </IconStyle>\n" +
                "    <LabelStyle>\n" +
-               "        <color>ff00ffff</color>\n" +
-               "        <scale>0.7</scale>\n" +
+               "        <color>ffffffff</color>\n" +
+               "        <scale>1.0</scale>\n" +
                "    </LabelStyle>\n" +
+               " <LineStyle>\n" +
+			   "    <width>10</width>\n" +
+	           " </LineStyle>\n" +
                "</Style>\n" +
                "<StyleMap id=\"site-icon\">\n" +
                "    <Pair>\n" +
@@ -670,6 +675,9 @@ public class PlanetKMLCreator extends JFrame {
     private String createSitePlacemark(Map<String, String> row) {
         StringBuilder sb = new StringBuilder();
         String siteId = row.getOrDefault("Site ID", "N/A");
+        
+       
+
         String lon = row.getOrDefault("Longitude", "0");
         String lat = row.getOrDefault("Latitude", "0");
         String heightFt = row.getOrDefault("Height (ft)", "0");
@@ -680,30 +688,20 @@ public class PlanetKMLCreator extends JFrame {
             // Keep height as 0 if parsing fails
         }
 
-        // Placemark for the line (mast)
-        sb.append("<Placemark>\n");
-        sb.append("  <name>").append(siteId).append(" Mast</name>\n");
-        sb.append("  <styleUrl>#site-line</styleUrl>\n");
-        sb.append("  <LineString>\n");
-        sb.append("    <extrude>1</extrude>\n");
-        sb.append("    <altitudeMode>relativeToGround</altitudeMode>\n");
-        sb.append("    <coordinates>");
-        sb.append(lon).append(",").append(lat).append(",0 "); // Start at ground
-        sb.append(lon).append(",").append(lat).append(",").append(heightMeters); // End at height
-        sb.append("</coordinates>\n");
-        sb.append("  </LineString>\n");
-        sb.append("</Placemark>\n");
 
         // Placemark for the icon at the top
         sb.append("<Placemark>\n");
         sb.append("  <name>").append(siteId).append(" (").append(heightFt).append(" ft)</name>\n");
         sb.append("  <styleUrl>#site-icon</styleUrl>\n");
-        sb.append("  <description><![CDATA[<table border='1' style='width:100%'>\n");
+        sb.append("  <ExtendedData>\n");
+        sb.append("    <SchemaData schemaUrl=\"#SITES_SCHEME_ID\">\n");
         for (Map.Entry<String, String> entry : row.entrySet()) {
-            sb.append("<tr><td><b>").append(entry.getKey()).append("</b></td><td>").append(entry.getValue()).append("</td></tr>");
+            sb.append("      <SimpleData name=\"").append(entry.getKey().replaceAll("[^a-zA-Z0-9]", "")).append("\">").append(entry.getValue()).append("</SimpleData>\n");
         }
-        sb.append("  </table>]]></description>\n");
+        sb.append("    </SchemaData>\n");
+        sb.append("  </ExtendedData>\n");
         sb.append("  <Point>\n");
+        sb.append("    <extrude>1</extrude>\n");
         sb.append("    <altitudeMode>relativeToGround</altitudeMode>\n");
         sb.append("    <coordinates>");
         sb.append(lon).append(",").append(lat).append(",").append(heightMeters);
@@ -717,15 +715,16 @@ public class PlanetKMLCreator extends JFrame {
     private String createSectorPlacemark(Map<String, String> row, String bandName, int range) {
         StringBuilder sb = new StringBuilder();
         sb.append("<Placemark>\n");
-        sb.append("<name>").append(row.getOrDefault("Sector ID", "N/A")).append("</name>\n");
+        sb.append("<name>").append(row.getOrDefault("Custom: NR_Cell_Name", "N/A")).append("</name>\n");
         sb.append("<styleUrl>#").append(bandName.replaceAll("[^a-zA-Z0-9]", "")).append("</styleUrl>\n");
 
-        sb.append("<description><![CDATA[");
-        sb.append("<table border='1' style='width:100%'>");
+        sb.append("  <ExtendedData>\n");
+        sb.append("    <SchemaData schemaUrl=\"#SECTORS_SCHEME_ID\">\n");
         for (Map.Entry<String, String> entry : row.entrySet()) {
-            sb.append("<tr><td><b>").append(entry.getKey()).append("</b></td><td>").append(entry.getValue()).append("</td></tr>");
+            sb.append("      <SimpleData name=\"").append(entry.getKey().replaceAll("[^a-zA-Z0-9]", "")).append("\">").append(entry.getValue()).append("</SimpleData>\n");
         }
-        sb.append("</table>]]></description>\n");
+        sb.append("    </SchemaData>\n");
+        sb.append("  </ExtendedData>\n");
 
         try {
             double lat = Double.parseDouble(row.getOrDefault("Latitude", "0"));
@@ -760,6 +759,7 @@ public class PlanetKMLCreator extends JFrame {
         return sb.toString();
     }
 
+
     private String createLabelPlacemark(Map<String, String> row, String header, int range) {
         StringBuilder sb = new StringBuilder();
         try {
@@ -775,11 +775,13 @@ public class PlanetKMLCreator extends JFrame {
                 sb.append("<Placemark>\n");
                 sb.append("  <name>").append(labelText).append("</name>\n");
                 sb.append("  <styleUrl>#label-style</styleUrl>\n");
-                sb.append("  <description><![CDATA[<table border='1'>\n");
-                sb.append("    <tr><td><b>Physical Cell ID</b></td><td>").append(row.getOrDefault("Physical Cell ID", "")).append("</td></tr>\n");
-                sb.append("    <tr><td><b>Height (ft)</b></td><td>").append(row.getOrDefault("Height (ft)", "")).append("</td></tr>\n");
-                sb.append("    <tr><td><b>Electrical Tilt</b></td><td>").append(row.getOrDefault("Electrical Tilt", "")).append("</td></tr>\n");
-                sb.append("  </table>]]></description>\n");
+                sb.append("  <ExtendedData>\n");
+                sb.append("    <SchemaData schemaUrl=\"#SECTORS_SCHEME_ID\">\n");
+                sb.append("      <SimpleData name=\"PhysicalCellID\">").append(row.getOrDefault("Physical Cell ID", "")).append("</SimpleData>\n");
+                sb.append("      <SimpleData name=\"Heightft\">").append(row.getOrDefault("Height (ft)", "")).append("</SimpleData>\n");
+                sb.append("      <SimpleData name=\"ElectricalTilt\">").append(row.getOrDefault("Electrical Tilt", "")).append("</SimpleData>\n");
+                sb.append("    </SchemaData>\n");
+                sb.append("  </ExtendedData>\n");
                 sb.append("  <Point>\n");
                 sb.append("    <altitudeMode>relativeToGround</altitudeMode>\n");
                 sb.append("    <coordinates>");
@@ -793,6 +795,7 @@ public class PlanetKMLCreator extends JFrame {
         }
         return sb.toString();
     }
+
 
     private double[] getDestinationPoint(double lat, double lon, double bearing, double distance) {
         double R = 6371e3; // Earth's radius in meters
